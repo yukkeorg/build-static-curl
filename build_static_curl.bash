@@ -1,13 +1,20 @@
 #!/usr/bin/env bash
 
 export LANG=C
-#set -eu
+set -ue
 
 SCRIPT_DIR=$(cd -P $(dirname "$0"); pwd -P)
-#WORK_DIR=$(mktemp -d)
-WORK_DIR="$HOME/.build_static_curl"
-JOBS=4
+WORK_DIR=$(mktemp -d)
 
+JOBS=4
+MAKE="make -j$JOBS"
+
+REDIRECT="2>&1"
+LOGFILE=">$SCRIPT_DIR/log.txt"
+if [ "${1-}" = "on_docker" ]; then
+    REDIRECT=""
+    LOGFILE=""
+fi
 
 ZLIB_TARBALL_URL="http://zlib.net/zlib-1.2.8.tar.gz"
 ZLIB_NAME=$(basename "$ZLIB_TARBALL_URL" .tar.gz)
@@ -15,86 +22,157 @@ ZLIB_NAME=$(basename "$ZLIB_TARBALL_URL" .tar.gz)
 LIBIDN_TARBALL_URL="http://ftp.gnu.org/gnu/libidn/libidn-1.30.tar.gz"
 LIBIDN_NAME=$(basename "$LIBIDN_TARBALL_URL" .tar.gz)
 
-OPENSSL_TARBALL_URL="https://www.openssl.org/source/openssl-1.0.2a.tar.gz"
-OPENSSL_NAME=$(basename "$OPENSSL_TARBALL_URL" .tar.gz)
+LIBRESSL_TARBALL_URL="http://ftp.openbsd.org/pub/OpenBSD/LibreSSL/libressl-2.3.1.tar.gz"
+LIBRESSL_NAME=$(basename "$LIBRESSL_TARBALL_URL" .tar.gz)
 
-LIBSSH2_TARBALL_URL="http://www.libssh2.org/download/libssh2-1.5.0.tar.gz"
+LIBSSH2_TARBALL_URL="http://www.libssh2.org/download/libssh2-1.6.0.tar.gz"
 LIBSSH2_NAME=$(basename "$LIBSSH2_TARBALL_URL" .tar.gz)
 
-CURL_TARBALL_URL="http://curl.haxx.se/download/curl-7.42.1.tar.gz"
+CURL_TARBALL_URL="http://curl.haxx.se/download/curl-7.45.0.tar.gz"
 CURL_NAME=$(basename "$CURL_TARBALL_URL" .tar.gz)
 
+notice() { echo "$@" >&2; }
 
-mkdir -p "$WORK_DIR" >/dev/null 2>&1
-pushd "$WORK_DIR"
-
-dlext() {
+download() {
     local TARBALL=$(basename "$1")
-    [ -f "$TARBALL" ] || wget -O "$TARBALL" "$1"
-    tar xf "$TARBALL"
+    if [ ! -f "$TARBALL" ]; then
+        notice "  Downloading $TARBALL"
+        wget -q -O "$TARBALL" "$1"
+    fi
 }
 
-dlext "$ZLIB_TARBALL_URL"
-dlext "$LIBIDN_TARBALL_URL"
-dlext "$OPENSSL_TARBALL_URL"
-dlext "$LIBSSH2_TARBALL_URL"
-dlext "$CURL_TARBALL_URL"
+extract() {
+    local ARCHIVE=$(basename "$1")
+    notice "  Extracting $ARCHIVE"
+    tar xf "$ARCHIVE"
+}
 
-pushd "$ZLIB_NAME"
-./configure --prefix="$WORK_DIR" --static
-make -j$JOBS
-make install
-popd
+dlext() {
+    download "$1"
+    extract "$1"
+}
 
-pushd "$LIBIDN_NAME"
-./configure --prefix="$WORK_DIR" \
-            --disable-shared \
-            --disable-csharp \
-            --disable-java
-make -j$JOBS
-make clean
-make install
-popd
+_build_zlib() {
+    (
+        cd "$WORK_DIR/$ZLIB_NAME"
+        CFLAGS="-I$WORK_DIR/include" \
+        LDFLAGS="-L$WORK_DIR/lib" \
+        ./configure --prefix="$WORK_DIR" --static
+        $MAKE clean
+        $MAKE
+        $MAKE install
+    )
+}
 
-pushd "$OPENSSL_NAME"
-./config --prefix="$WORK_DIR" no-shared
-make -j$JOBS
-make clean
-make install_sw
-popd
+_build_libidn() {
+    (
+        cd "$WORK_DIR/$LIBIDN_NAME"
+        CFLAGS="-I$WORK_DIR/include" \
+        LDFLAGS="-L$WORK_DIR/lib" \
+        ./configure --prefix="$WORK_DIR" \
+                    --disable-shared \
+                    --disable-csharp \
+                    --disable-java
 
-pushd "$LIBSSH2_NAME"
-LIBS="-ldl" \
-./configure --prefix="$WORK_DIR" \
-            --with-libz-prefix="$WORK_DIR" \
-            --with-libssl-prefix="$WORK_DIR" \
-            --disable-shared \
-            --enable-static
-make -j$JOBS
-make clean
-make install
-popd
+        $MAKE clean
+        $MAKE
+        $MAKE install
+    )
+}
 
-pushd "$CURL_NAME"
-CPPFLAGS="-I$WORK_DIR/include" \
-LDFLAGS="-L$WORK_DIR/lib" \
-LIBS="-ldl" \
-./configure --prefix="$WORK_DIR" \
-            --with-zlib="$WORK_DIR" \
-            --with-ssl="$WORK_DIR" \
-            --with-libssh2="$WORK_DIR" \
-            --disable-shared \
-            --enable-static \
-            --disable-imap \
-            --disable-ldap \
-            --disable-ldaps \
-            --disable-rtsp \
-            --disable-gopher \
-            --without-librtmp \
-            --without-nghttp2
-make -j$JOBS
-make clean
-make install
-popd
+_build_libressl() {
+    (
+        cd "$WORK_DIR/$LIBRESSL_NAME"
+        CFLAGS="-I$WORK_DIR/include" \
+        LDFLAGS="-L$WORK_DIR/lib" \
+        ./configure --prefix="$WORK_DIR" \
+                    --disable-shared \
+                    --enable-static
+        $MAKE clean
+        $MAKE
+        $MAKE install
+    )
+}
 
-popd
+_build_libssh2() {
+    (
+        cd "$WORK_DIR/$LIBSSH2_NAME"
+        CFLAGS="-I$WORK_DIR/include" \
+        LDFLAGS="-L$WORK_DIR/lib" \
+        ./configure --prefix="$WORK_DIR" \
+                    --with-libz-prefix="$WORK_DIR" \
+                    --with-libssl-prefix="$WORK_DIR" \
+                    --disable-shared \
+                    --enable-static
+
+        $MAKE clean
+        $MAKE
+        $MAKE install
+    )
+}
+
+_build_curl() {
+    (
+        cd "$WORK_DIR/$CURL_NAME"
+        lib/mk-ca-bundle.pl
+
+        CFLAGS="-I$WORK_DIR/include" \
+        LDFLAGS="-L$WORK_DIR/lib" \
+        ./configure --prefix="$WORK_DIR" \
+                    --with-zlib="$WORK_DIR" \
+                    --with-ssl="$WORK_DIR" \
+                    --with-libssh2="$WORK_DIR" \
+                    --without-ca-path \
+                    --without-ca-bundle \
+                    --disable-shared \
+                    --enable-static \
+                    --disable-imap \
+                    --disable-ldap \
+                    --disable-ldaps \
+                    --disable-rtsp \
+                    --disable-gopher \
+                    --without-librtmp \
+                    --without-nghttp2
+
+        $MAKE clean
+        $MAKE
+        $MAKE install
+    )
+}
+
+build_all() {
+    notice "Create work directory"
+    mkdir -p "$WORK_DIR" >/dev/null 2>&1
+
+    notice "Downloading and extracting dependency libraries."
+    (
+        cd "$WORK_DIR"
+        dlext "$ZLIB_TARBALL_URL"
+        dlext "$LIBIDN_TARBALL_URL"
+        dlext "$LIBRESSL_TARBALL_URL"
+        dlext "$LIBSSH2_TARBALL_URL"
+        dlext "$CURL_TARBALL_URL"
+    )
+
+    notice "Building and installing ZLib."
+    eval "_build_zlib $REDIRECT"
+
+    notice "Building and installing libidn."
+    eval "_build_libidn $REDIRECT"
+
+    notice "Building and installing libressl."
+    eval "_build_libressl $REDIRECT"
+
+    notice "Building and installing libssh2."
+    eval "_build_libssh2 $REDIRECT"
+
+    notice "Building and installing curl."
+    eval "_build_curl $REDIRECT"
+
+    notice "Copy built curl to current directory."
+    cp "$WORK_DIR/bin/curl" "$SCRIPT_DIR"
+
+    notice "Done."
+}
+
+eval "build_all $LOGFILE"
