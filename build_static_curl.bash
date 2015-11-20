@@ -3,15 +3,17 @@
 export LANG=C
 set -ue
 
+PARAM="${1-}"
+
 SCRIPT_DIR=$(cd -P $(dirname "$0"); pwd -P)
 WORK_DIR=$(mktemp -d)
 
-JOBS=4
+JOBS=$(nproc)
 MAKE="make -j$JOBS"
 
 REDIRECT="2>&1"
 LOGFILE=">$SCRIPT_DIR/log.txt"
-if [ "${1-}" = "on_docker" ]; then
+if [ "$PARAM" = "on_docker" ]; then
     REDIRECT=""
     LOGFILE=""
 fi
@@ -53,91 +55,97 @@ dlext() {
 }
 
 _build_zlib() {
-    (
-        cd "$WORK_DIR/$ZLIB_NAME"
-        CFLAGS="-I$WORK_DIR/include" \
-        LDFLAGS="-L$WORK_DIR/lib" \
-        ./configure --prefix="$WORK_DIR" --static
-        $MAKE clean
-        $MAKE
-        $MAKE install
-    )
+(
+    cd "$WORK_DIR/$ZLIB_NAME"
+
+    CFLAGS="-I$WORK_DIR/include" \
+    LDFLAGS="-L$WORK_DIR/lib" \
+    ./configure --prefix="$WORK_DIR" \
+                --static
+
+    $MAKE clean
+    $MAKE
+    $MAKE install
+)
 }
 
 _build_libidn() {
-    (
-        cd "$WORK_DIR/$LIBIDN_NAME"
-        CFLAGS="-I$WORK_DIR/include" \
-        LDFLAGS="-L$WORK_DIR/lib" \
-        ./configure --prefix="$WORK_DIR" \
-                    --disable-shared \
-                    --disable-csharp \
-                    --disable-java
+(
+    cd "$WORK_DIR/$LIBIDN_NAME"
 
-        $MAKE clean
-        $MAKE
-        $MAKE install
-    )
+    CFLAGS="-I$WORK_DIR/include" \
+    LDFLAGS="-L$WORK_DIR/lib" \
+    ./configure --prefix="$WORK_DIR" \
+                --disable-shared \
+                --disable-csharp \
+                --disable-java
+
+    $MAKE clean
+    $MAKE
+    $MAKE install
+)
 }
 
 _build_libressl() {
-    (
-        cd "$WORK_DIR/$LIBRESSL_NAME"
-        CFLAGS="-I$WORK_DIR/include" \
-        LDFLAGS="-L$WORK_DIR/lib" \
-        ./configure --prefix="$WORK_DIR" \
-                    --disable-shared \
-                    --enable-static
-        $MAKE clean
-        $MAKE
-        $MAKE install
-    )
+(
+    cd "$WORK_DIR/$LIBRESSL_NAME"
+
+    CFLAGS="-I$WORK_DIR/include" \
+    LDFLAGS="-L$WORK_DIR/lib" \
+    ./configure --prefix="$WORK_DIR" \
+                --disable-shared \
+                --enable-static
+
+    $MAKE clean
+    $MAKE
+    $MAKE install
+)
 }
 
 _build_libssh2() {
-    (
-        cd "$WORK_DIR/$LIBSSH2_NAME"
-        CFLAGS="-I$WORK_DIR/include" \
-        LDFLAGS="-L$WORK_DIR/lib" \
-        ./configure --prefix="$WORK_DIR" \
-                    --with-libz-prefix="$WORK_DIR" \
-                    --with-libssl-prefix="$WORK_DIR" \
-                    --disable-shared \
-                    --enable-static
+(
+    cd "$WORK_DIR/$LIBSSH2_NAME"
 
-        $MAKE clean
-        $MAKE
-        $MAKE install
-    )
+    CFLAGS="-I$WORK_DIR/include" \
+    LDFLAGS="-L$WORK_DIR/lib" \
+    ./configure --prefix="$WORK_DIR" \
+                --with-libz-prefix="$WORK_DIR" \
+                --with-libssl-prefix="$WORK_DIR" \
+                --disable-shared \
+                --enable-static
+
+    $MAKE clean
+    $MAKE
+    $MAKE install
+)
 }
 
 _build_curl() {
-    (
-        cd "$WORK_DIR/$CURL_NAME"
-        lib/mk-ca-bundle.pl
+(
+    cd "$WORK_DIR/$CURL_NAME"
 
-        CFLAGS="-I$WORK_DIR/include" \
-        LDFLAGS="-L$WORK_DIR/lib" \
-        ./configure --prefix="$WORK_DIR" \
-                    --with-zlib="$WORK_DIR" \
-                    --with-ssl="$WORK_DIR" \
-                    --with-libssh2="$WORK_DIR" \
-                    --without-ca-path \
-                    --without-ca-bundle \
-                    --disable-shared \
-                    --enable-static \
-                    --disable-imap \
-                    --disable-ldap \
-                    --disable-ldaps \
-                    --disable-rtsp \
-                    --disable-gopher \
-                    --without-librtmp \
-                    --without-nghttp2
+    CFLAGS="-I$WORK_DIR/include" \
+    LDFLAGS="-L$WORK_DIR/lib" \
+    ./configure --prefix="$WORK_DIR" \
+                --with-zlib="$WORK_DIR" \
+                --with-ssl="$WORK_DIR" \
+                --with-libssh2="$WORK_DIR" \
+                --without-ca-path \
+                --without-ca-bundle \
+                --disable-shared \
+                --enable-static \
+                --disable-imap \
+                --disable-ldap \
+                --disable-ldaps \
+                --disable-rtsp \
+                --disable-gopher \
+                --without-librtmp \
+                --without-nghttp2
 
-        $MAKE clean
-        $MAKE
-        $MAKE install
-    )
+    $MAKE clean
+    $MAKE
+    $MAKE install
+)
 }
 
 build_all() {
