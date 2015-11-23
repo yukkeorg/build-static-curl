@@ -1,0 +1,16 @@
+FROM centos:6
+
+# For building curl
+RUN yum install -y wget file tar make gcc pkgconfig automake autoconf
+
+# Prepare Environment
+RUN mkdir /home/build
+WORKDIR /home/build
+
+RUN wget https://raw.githubusercontent.com/yukkeorg/static-curl-build-script/master/build_static_curl.bash
+RUN chmod +x build_static_curl.bash
+
+# Build
+RUN ./build_static_curl.bash on_docker
+
+ENTRYPOINT bash
