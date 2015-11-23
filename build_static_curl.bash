@@ -3,7 +3,7 @@
 export LANG=C
 set -ue
 
-PARAM="${1-}"
+PARAM="${1:-}"
 
 SCRIPT_DIR=$(cd -P $(dirname "$0"); pwd -P)
 WORK_DIR=$(mktemp -d)
