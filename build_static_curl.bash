@@ -9,7 +9,7 @@ SCRIPT_DIR=$(cd -P $(dirname "$0"); pwd -P)
 WORK_DIR=$(mktemp -d)
 
 JOBS=$(nproc)
-MAKE="make -j$JOBS"
+MP_MAKE="make -j$JOBS"
 
 REDIRECT="2>&1"
 LOGFILE=">$SCRIPT_DIR/log.txt"
@@ -63,9 +63,9 @@ _build_zlib() {
     ./configure --prefix="$WORK_DIR" \
                 --static
 
-    $MAKE clean
-    $MAKE
-    $MAKE install
+    make clean
+    $MP_MAKE
+    make install
 )
 }
 
@@ -80,9 +80,9 @@ _build_libidn() {
                 --disable-csharp \
                 --disable-java
 
-    $MAKE clean
-    $MAKE
-    $MAKE install
+    make clean
+    $MP_MAKE
+    make install
 )
 }
 
@@ -96,9 +96,9 @@ _build_libressl() {
                 --disable-shared \
                 --enable-static
 
-    $MAKE clean
-    $MAKE
-    $MAKE install
+    make clean
+    $MP_MAKE
+    make install
 )
 }
 
@@ -114,9 +114,9 @@ _build_libssh2() {
                 --disable-shared \
                 --enable-static
 
-    $MAKE clean
-    $MAKE
-    $MAKE install
+    make clean
+    $MP_MAKE
+    make install
 )
 }
 
@@ -142,9 +142,9 @@ _build_curl() {
                 --without-librtmp \
                 --without-nghttp2
 
-    $MAKE clean
-    $MAKE
-    $MAKE install
+    make clean
+    $MP_MAKE
+    make install
 )
 }
 
