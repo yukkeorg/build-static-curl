@@ -24,13 +24,13 @@ ZLIB_NAME=$(basename "$ZLIB_TARBALL_URL" .tar.gz)
 LIBIDN_TARBALL_URL="http://ftp.gnu.org/gnu/libidn/libidn-1.30.tar.gz"
 LIBIDN_NAME=$(basename "$LIBIDN_TARBALL_URL" .tar.gz)
 
-LIBRESSL_TARBALL_URL="http://ftp.openbsd.org/pub/OpenBSD/LibreSSL/libressl-2.3.1.tar.gz"
+LIBRESSL_TARBALL_URL="http://ftp.openbsd.org/pub/OpenBSD/LibreSSL/libressl-2.3.3.tar.gz"
 LIBRESSL_NAME=$(basename "$LIBRESSL_TARBALL_URL" .tar.gz)
 
-LIBSSH2_TARBALL_URL="http://www.libssh2.org/download/libssh2-1.6.0.tar.gz"
+LIBSSH2_TARBALL_URL="http://www.libssh2.org/download/libssh2-1.7.0.tar.gz"
 LIBSSH2_NAME=$(basename "$LIBSSH2_TARBALL_URL" .tar.gz)
 
-CURL_TARBALL_URL="http://curl.haxx.se/download/curl-7.45.0.tar.gz"
+CURL_TARBALL_URL="http://curl.haxx.se/download/curl-7.48.0.tar.gz"
 CURL_NAME=$(basename "$CURL_TARBALL_URL" .tar.gz)
 
 notice() { echo "$@" >&2; }
