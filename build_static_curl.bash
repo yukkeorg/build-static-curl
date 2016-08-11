@@ -125,8 +125,8 @@ _build_curl() {
     cd "$WORK_DIR/$CURL_NAME"
 
     if [ -e $SCRIPT_DIR/curl.patch ]; then
-        notice "found curl.patch and applied."
         patch -p0 < $SCRIPT_DIR/curl.patch
+        notice "found curl.patch and applied."
     fi
 
     CFLAGS="-I$WORK_DIR/include" \
