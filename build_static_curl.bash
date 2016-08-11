@@ -30,6 +30,9 @@ LIBRESSL_NAME=$(basename "$LIBRESSL_TARBALL_URL" .tar.gz)
 LIBSSH2_TARBALL_URL="http://www.libssh2.org/download/libssh2-1.7.0.tar.gz"
 LIBSSH2_NAME=$(basename "$LIBSSH2_TARBALL_URL" .tar.gz)
 
+NGHTTP2_TARBALL_URL="https://github.com/nghttp2/nghttp2/releases/download/v1.13.0/nghttp2-1.13.0.tar.gz"
+NGHTTP2_NAME=$(basename "$NGHTTP2_TARBALL_URL" .tar.gz)
+
 CURL_TARBALL_URL="http://curl.haxx.se/download/curl-7.50.1.tar.gz"
 CURL_NAME=$(basename "$CURL_TARBALL_URL" .tar.gz)
 
@@ -120,6 +123,23 @@ _build_libssh2() {
 )
 }
 
+_build_nghttp2() {
+(
+    cd "$WORK_DIR/$NGHTTP2_NAME"
+
+    CFLAGS="-I$WORK_DIR/include" \
+    LDFLAGS="-L$WORK_DIR/lib" \
+    ./configure --prefix="$WORK_DIR" \
+                --enable-lib-only \
+                --disable-shared \
+                --enable-static
+
+    make clean
+    $MP_MAKE
+    make install
+)
+}
+
 _build_curl() {
 (
     cd "$WORK_DIR/$CURL_NAME"
@@ -135,6 +155,7 @@ _build_curl() {
                 --with-zlib="$WORK_DIR" \
                 --with-ssl="$WORK_DIR" \
                 --with-libssh2="$WORK_DIR" \
+                --with-nghttp2="$WORK_DIR" \
                 --without-ca-path \
                 --without-ca-bundle \
                 --disable-shared \
@@ -144,8 +165,7 @@ _build_curl() {
                 --disable-ldaps \
                 --disable-rtsp \
                 --disable-gopher \
-                --without-librtmp \
-                --without-nghttp2
+                --without-librtmp
 
     make clean
     $MP_MAKE
@@ -164,6 +184,7 @@ build_all() {
         dlext "$LIBIDN_TARBALL_URL"
         dlext "$LIBRESSL_TARBALL_URL"
         dlext "$LIBSSH2_TARBALL_URL"
+        dlext "$NGHTTP2_TARBALL_URL"
         dlext "$CURL_TARBALL_URL"
     )
 
@@ -178,6 +199,9 @@ build_all() {
 
     notice "Building and installing libssh2."
     eval "_build_libssh2 $REDIRECT"
+
+    notice "Building and installing nghttp2."
+    eval "_build_nghttp2 $REDIRECT"
 
     notice "Building and installing curl."
     eval "_build_curl $REDIRECT"
