@@ -206,8 +206,9 @@ build_all() {
     notice "Building and installing curl."
     eval "_build_curl $REDIRECT"
 
-    notice "Copy built curl to current directory."
-    cp "$WORK_DIR/bin/curl" "$SCRIPT_DIR"
+    notice "Copy built curl to out directory."
+    test -d "$SCRIPT_DIR/out" || mkdir -p "$SCRIPT_DIR/out"
+    cp "$WORK_DIR/bin/curl" "$SCRIPT_DIR/out/"
 
     notice "Done."
 }
