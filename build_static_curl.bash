@@ -1,9 +1,28 @@
 #!/usr/bin/env bash
-
 export LANG=C
 set -ue
 
-PARAM="${1:-}"
+#--------------------
+
+ZLIB_TARBALL_URL="http://zlib.net/zlib-1.2.11.tar.gz"
+ZLIB_NAME=$(basename "$ZLIB_TARBALL_URL" .tar.gz)
+
+LIBIDN_TARBALL_URL="http://ftp.gnu.org/gnu/libidn/libidn2-2.3.1.tar.gz"
+LIBIDN_NAME=$(basename "$LIBIDN_TARBALL_URL" .tar.gz)
+
+LIBRESSL_TARBALL_URL="http://ftp.openbsd.org/pub/OpenBSD/LibreSSL/libressl-3.3.0.tar.gz"
+LIBRESSL_NAME=$(basename "$LIBRESSL_TARBALL_URL" .tar.gz)
+
+LIBSSH2_TARBALL_URL="http://www.libssh2.org/download/libssh2-1.9.0.tar.gz"
+LIBSSH2_NAME=$(basename "$LIBSSH2_TARBALL_URL" .tar.gz)
+
+CURL_TARBALL_URL="http://curl.haxx.se/download/curl-7.77.0.tar.gz"
+CURL_NAME=$(basename "$CURL_TARBALL_URL" .tar.gz)
+
+#--------------------
+
+VERBOSE="${VERBOSE:-}"
+CROSS_HOST="${CROSS_HOST:-}"
 
 SCRIPT_DIR=$(cd -P $(dirname "$0"); pwd -P)
 WORK_DIR=$(mktemp -d)
@@ -13,28 +32,18 @@ MP_MAKE="make -j$JOBS"
 
 REDIRECT="2>&1"
 LOGFILE=">$SCRIPT_DIR/log.txt"
-if [ "$PARAM" = "on_docker" ]; then
+if [ -n "${VERBOSE}" ]; then
     REDIRECT=""
     LOGFILE=""
 fi
 
-ZLIB_TARBALL_URL="http://zlib.net/zlib-1.2.11.tar.gz"
-ZLIB_NAME=$(basename "$ZLIB_TARBALL_URL" .tar.gz)
+CROSS_HOST_PREFIX=""
+CROSS_HOST_OPTION=""
+if [ -n "${CROSS_HOST}" ]; then
+    CROSS_HOST_PREFIX="${CROSS_HOST}-"
+    CROSS_HOST_OPTION="--host=${CROSS_HOST}"
+fi
 
-LIBIDN_TARBALL_URL="http://ftp.gnu.org/gnu/libidn/libidn-1.33.tar.gz"
-LIBIDN_NAME=$(basename "$LIBIDN_TARBALL_URL" .tar.gz)
-
-LIBRESSL_TARBALL_URL="http://ftp.openbsd.org/pub/OpenBSD/LibreSSL/libressl-2.6.0.tar.gz"
-LIBRESSL_NAME=$(basename "$LIBRESSL_TARBALL_URL" .tar.gz)
-
-LIBSSH2_TARBALL_URL="http://www.libssh2.org/download/libssh2-1.8.0.tar.gz"
-LIBSSH2_NAME=$(basename "$LIBSSH2_TARBALL_URL" .tar.gz)
-
-NGHTTP2_TARBALL_URL="https://github.com/nghttp2/nghttp2/releases/download/v1.24.0/nghttp2-1.24.0.tar.gz"
-NGHTTP2_NAME=$(basename "$NGHTTP2_TARBALL_URL" .tar.gz)
-
-CURL_TARBALL_URL="http://curl.haxx.se/download/curl-7.54.1.tar.gz"
-CURL_NAME=$(basename "$CURL_TARBALL_URL" .tar.gz)
 
 notice() { echo "$@" >&2; }
 
@@ -61,10 +70,11 @@ _build_zlib() {
 (
     cd "$WORK_DIR/$ZLIB_NAME"
 
+    CC="${CROSS_HOST_PREFIX}gcc" \
+    CPP="${CROSS_HOST_PREFIX}cpp" \
     CFLAGS="-I$WORK_DIR/include" \
     LDFLAGS="-L$WORK_DIR/lib" \
-    ./configure --prefix="$WORK_DIR" \
-                --static
+    ./configure --prefix="$WORK_DIR" --static
 
     make clean
     $MP_MAKE
@@ -78,7 +88,8 @@ _build_libidn() {
 
     CFLAGS="-I$WORK_DIR/include" \
     LDFLAGS="-L$WORK_DIR/lib" \
-    ./configure --prefix="$WORK_DIR" \
+    ./configure ${CROSS_HOST_OPTION} \
+                --prefix="$WORK_DIR" \
                 --disable-shared \
                 --disable-csharp \
                 --disable-java
@@ -95,7 +106,8 @@ _build_libressl() {
 
     CFLAGS="-I$WORK_DIR/include" \
     LDFLAGS="-L$WORK_DIR/lib" \
-    ./configure --prefix="$WORK_DIR" \
+    ./configure ${CROSS_HOST_OPTION} \
+                --prefix="$WORK_DIR" \
                 --disable-shared \
                 --enable-static
 
@@ -111,26 +123,10 @@ _build_libssh2() {
 
     CFLAGS="-I$WORK_DIR/include" \
     LDFLAGS="-L$WORK_DIR/lib" \
-    ./configure --prefix="$WORK_DIR" \
+    ./configure ${CROSS_HOST_OPTION} \
+                --prefix="$WORK_DIR" \
                 --with-libz-prefix="$WORK_DIR" \
                 --with-libssl-prefix="$WORK_DIR" \
-                --disable-shared \
-                --enable-static
-
-    make clean
-    $MP_MAKE
-    make install
-)
-}
-
-_build_nghttp2() {
-(
-    cd "$WORK_DIR/$NGHTTP2_NAME"
-
-    CFLAGS="-I$WORK_DIR/include" \
-    LDFLAGS="-L$WORK_DIR/lib" \
-    ./configure --prefix="$WORK_DIR" \
-                --enable-lib-only \
                 --disable-shared \
                 --enable-static
 
@@ -151,15 +147,16 @@ _build_curl() {
 
     CFLAGS="-I$WORK_DIR/include" \
     LDFLAGS="-L$WORK_DIR/lib" \
-    ./configure --prefix="$WORK_DIR" \
+    ./configure ${CROSS_HOST_OPTION} \
+                --prefix="$WORK_DIR" \
                 --with-zlib="$WORK_DIR" \
                 --with-ssl="$WORK_DIR" \
                 --with-libssh2="$WORK_DIR" \
-                --with-nghttp2="$WORK_DIR" \
                 --without-ca-path \
                 --without-ca-bundle \
                 --disable-shared \
                 --enable-static \
+                --disable-dict \
                 --disable-imap \
                 --disable-ldap \
                 --disable-ldaps \
@@ -184,7 +181,6 @@ build_all() {
         dlext "$LIBIDN_TARBALL_URL"
         dlext "$LIBRESSL_TARBALL_URL"
         dlext "$LIBSSH2_TARBALL_URL"
-        dlext "$NGHTTP2_TARBALL_URL"
         dlext "$CURL_TARBALL_URL"
     )
 
@@ -200,15 +196,11 @@ build_all() {
     notice "Building and installing libssh2."
     eval "_build_libssh2 $REDIRECT"
 
-    notice "Building and installing nghttp2."
-    eval "_build_nghttp2 $REDIRECT"
-
     notice "Building and installing curl."
     eval "_build_curl $REDIRECT"
 
     notice "Copy built curl to out directory."
-    test -d "$SCRIPT_DIR/out" || mkdir -p "$SCRIPT_DIR/out"
-    cp "$WORK_DIR/bin/curl" "$SCRIPT_DIR/out/"
+    find "$WORK_DIR/bin" -type f | grep -E 'curl(\.exe)?$' | xargs -- cp -t "$SCRIPT_DIR"
 
     notice "Done."
 }

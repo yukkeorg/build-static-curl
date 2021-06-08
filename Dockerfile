@@ -1,10 +1,9 @@
-FROM debian:9
+FROM debian
 
 RUN apt-get update && \
-    apt-get install -y wget file tar make gcc cpp pkg-config automake autoconf
+    apt-get install -y wget file tar make gcc cpp pkg-config automake autoconf build-essential mingw-w64
 
 WORKDIR /build
-COPY build_static_curl.bash /build
 
-ENTRYPOINT ["/bin/bash", "build_static_curl.bash"]
-VOLUME ["/build/out"]
+VOLUME ["/build"]
+CMD ["/bin/bash", "build_static_curl.bash"]
