@@ -1,6 +1,6 @@
 ## static-curl-build-script
 
-static cURL (including zlib, libidn, libressl and libssh2) build script
+static cURL program (with zlib, libidn, libressl and libssh2) build script
 
 ### Standalone
 
